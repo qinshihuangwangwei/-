@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>综测计分 · 前端重构方向对比</title>
+<style>
+/* ---- 对比页自身的壳，与三个方案无关 ---- */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+       background: #23262b; color: #e8eaed; line-height: 1.6; }
+.shell { max-width: 1180px; margin: 0 auto; padding: 2rem 1.25rem 6rem; }
+.shell h1 { font-size: 1.35rem; margin: 0 0 .35rem; }
+.shell > p { color: #9aa3ad; margin: 0 0 1.5rem; font-size: .92rem; }
+.picker { position: sticky; top: 0; z-index: 10; background: #23262b;
+          display: flex; gap: .5rem; flex-wrap: wrap; padding: .75rem 0 1rem;
+          border-bottom: 1px solid #383c43; margin-bottom: 1.5rem; }
+.picker label { cursor: pointer; padding: .35rem .9rem; border-radius: 999px;
+                border: 1px solid #444a53; font-size: .9rem; color: #c3cad3; }
+.picker input { position: absolute; opacity: 0; pointer-events: none; }
+.picker label:has(input:checked) { background: #e8eaed; color: #23262b; border-color: #e8eaed; font-weight: 600; }
+.note { color: #9aa3ad; font-size: .82rem; margin: 1.6rem 0 .5rem; }
+.frame { border: 1px solid #383c43; border-radius: .6rem; overflow: hidden; }
+.dir { display: none; }
+#d-a:checked ~ .stage .dir-a, #d-b:checked ~ .stage .dir-b, #d-c:checked ~ .stage .dir-c { display: block; }
+
+/* ============================================================
+   方案 A —— 台账
+   中式账册 / 会计凭证：纸墨、界格、印泥红、双线合计、凭证链
+   ============================================================ */
+.dir-a {
+  --paper: #f6f5f1; --ink: #1b2430; --ink-soft: #5c6672;
+  --rule: #dcdad2; --rule-soft: #e9e7df; --seal: #a83a32; --check: #2c6e4f; --warn: #8a5a12;
+  background: var(--paper); color: var(--ink);
+  font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  padding: 1.75rem 1.5rem 2.5rem;
+}
+.dir-a .serif { font-family: "Songti SC", "SimSun", "Noto Serif CJK SC", Georgia, serif; }
+.dir-a .num { font-family: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", monospace;
+              font-variant-numeric: tabular-nums; }
+.dir-a h2 { font-size: 1.15rem; letter-spacing: .04em; margin: 0 0 .1rem;
+            font-family: "Songti SC", "SimSun", serif; font-weight: 600; }
+.dir-a .sub { color: var(--ink-soft); font-size: .84rem; margin: 0 0 1.1rem; }
+.dir-a .seal-badge { display: inline-flex; align-items: center; gap: .35rem;
+  border: 1.5px solid var(--seal); color: var(--seal); border-radius: 3px;
+  padding: .1rem .45rem; font-size: .78rem; font-weight: 600; letter-spacing: .06em; }
+.dir-a table { border-collapse: collapse; width: 100%; font-size: .87rem; }
+.dir-a thead th { text-align: left; font-weight: 600; font-size: .78rem; letter-spacing: .08em;
+  color: var(--ink-soft); border-bottom: 1.5px solid var(--ink); padding: .4rem .55rem; }
+.dir-a tbody td { border-bottom: 1px solid var(--rule-soft); padding: .42rem .55rem; }
+.dir-a td.n, .dir-a th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.dir-a tfoot td { border-top: 3px double var(--ink); border-bottom: none;
+  padding: .45rem .55rem; font-weight: 700; }
+.dir-a .tag { display: inline-block; font-size: .74rem; padding: .05rem .4rem;
+  border-radius: 2px; border: 1px solid; }
+.dir-a .tag-done { color: var(--check); border-color: var(--check); background: #eaf1ec; }
+.dir-a .tag-zero { color: var(--ink-soft); border-color: var(--rule); background: transparent; }
+.dir-a .tag-none { color: var(--warn); border-color: var(--warn); background: #f6efe2; }
+.dir-a .rail { list-style: none; margin: .5rem 0 0; padding: 0 0 0 1.15rem;
+  border-left: 2px solid var(--rule); }
+.dir-a .rail li { position: relative; padding: .3rem 0 .5rem .85rem; font-size: .84rem; }
+.dir-a .rail li::before { content: ""; position: absolute; left: -1.5rem; top: .72rem;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--paper);
+  border: 2px solid var(--ink-soft); }
+.dir-a .rail .when { color: var(--ink-soft); font-size: .78rem; }
+.dir-a .ledger-head { display: flex; justify-content: space-between; align-items: flex-end;
+  border-bottom: 1.5px solid var(--ink); padding-bottom: .3rem; margin-bottom: .2rem; }
+.dir-a fieldset { border: 1px solid var(--rule); padding: .9rem 1rem 1.1rem; margin: 0; }
+.dir-a legend { font-size: .82rem; color: var(--ink-soft); padding: 0 .4rem; letter-spacing: .06em; }
+.dir-a label { display: block; font-size: .8rem; color: var(--ink-soft); margin: .6rem 0 .15rem; }
+.dir-a input[type=text], .dir-a select { width: 100%; padding: .35rem .5rem; font: inherit;
+  font-size: .86rem; border: 1px solid var(--rule); background: #fff; color: var(--ink); }
+.dir-a .meter { height: 3px; background: var(--rule); margin-top: .3rem; }
+.dir-a .meter i { display: block; height: 100%; background: var(--check); }
+.dir-a button { font: inherit; font-size: .86rem; padding: .38rem 1.1rem; cursor: pointer;
+  background: var(--ink); color: var(--paper); border: 1px solid var(--ink); border-radius: 2px; }
+.dir-a .steps { display: flex; gap: 0; align-items: center; font-size: .82rem; margin: .35rem 0 0; }
+.dir-a .steps span { padding: .2rem .7rem; border: 1px solid var(--rule); color: var(--ink-soft); }
+.dir-a .steps span.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.dir-a .steps em { font-style: normal; color: var(--rule); padding: 0 .15rem; }
+.dir-a .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+@media (max-width: 760px) { .dir-a .grid2 { grid-template-columns: 1fr; } }
+
+/* ============================================================
+   方案 B —— 校务公文
+   红头文件 / 公示栏：居中版面、红头色带、宋体、公章
+   ============================================================ */
+.dir-b {
+  --paper: #fff; --ink: #1f2328; --soft: #6b7280; --head: #9e2b25;
+  --line: #e3e5e8; --blue: #1f4e79;
+  background: var(--paper); color: var(--ink);
+  font-family: "STFangsong", FangSong, system-ui, "Microsoft YaHei", sans-serif;
+  padding: 0 0 2.5rem;
+}
+.dir-b .band { background: var(--head); color: #fff; padding: .7rem 2rem;
+  font-family: "Songti SC", SimSun, serif; font-size: 1.05rem; letter-spacing: .3em; }
+.dir-b .sheet { max-width: 880px; margin: 0 auto; padding: 1.6rem 2rem 0; }
+.dir-b h2 { font-family: "Songti SC", SimSun, serif; font-size: 1.5rem; text-align: center;
+  margin: 0 0 .3rem; letter-spacing: .08em; font-weight: 600; }
+.dir-b .sub { text-align: center; color: var(--soft); font-size: .84rem;
+  border-bottom: 2px solid var(--head); padding-bottom: .9rem; margin: 0 0 1.2rem; }
+.dir-b .num { font-family: ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+.dir-b table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+.dir-b thead th { background: #f4f5f6; border: 1px solid var(--line); padding: .4rem .55rem;
+  text-align: left; font-weight: 600; font-size: .8rem; }
+.dir-b td { border: 1px solid var(--line); padding: .4rem .55rem; }
+.dir-b td.n, .dir-b th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.dir-b tfoot td { font-weight: 700; background: #fafafa; }
+.dir-b .tag { display: inline-block; font-size: .74rem; padding: .05rem .4rem; border-radius: 2px; }
+.dir-b .tag-done { background: #e8f2ec; color: #1f6b45; }
+.dir-b .tag-zero { background: #eef0f2; color: var(--soft); }
+.dir-b .tag-none { background: #fbeee0; color: #8a5a12; }
+.dir-b .stamp { float: right; width: 96px; height: 96px; border: 3px solid var(--head);
+  border-radius: 50%; color: var(--head); display: grid; place-items: center;
+  text-align: center; font-size: .74rem; line-height: 1.25; transform: rotate(-11deg);
+  opacity: .82; font-family: "Songti SC", SimSun, serif; letter-spacing: .1em; }
+.dir-b fieldset { border: 1px solid var(--line); padding: .9rem 1rem 1.1rem; margin: 0; }
+.dir-b legend { font-size: .84rem; color: var(--soft); padding: 0 .4rem; }
+.dir-b label { display: block; font-size: .82rem; color: var(--soft); margin: .6rem 0 .15rem; }
+.dir-b input[type=text], .dir-b select { width: 100%; padding: .35rem .5rem; font: inherit;
+  font-size: .86rem; border: 1px solid var(--line); background: #fff; }
+.dir-b button { font: inherit; font-size: .86rem; padding: .38rem 1.2rem; cursor: pointer;
+  background: var(--head); color: #fff; border: none; }
+.dir-b .rail { list-style: none; margin: .5rem 0 0; padding: 0; }
+.dir-b .rail li { border-left: 3px solid var(--line); padding: .3rem 0 .5rem .7rem;
+  font-size: .84rem; }
+.dir-b .rail li:first-child { border-left-color: var(--head); }
+.dir-b .when { color: var(--soft); font-size: .78rem; }
+.dir-b .steps { display: flex; align-items: center; gap: .3rem; font-size: .82rem; margin-top: .35rem; }
+.dir-b .steps span { padding: .18rem .6rem; border: 1px solid var(--line); color: var(--soft); }
+.dir-b .steps span.on { background: var(--head); color: #fff; border-color: var(--head); }
+.dir-b .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+@media (max-width: 760px) { .dir-b .grid2 { grid-template-columns: 1fr; } .dir-b .stamp { display: none; } }
+
+/* ============================================================
+   方案 C —— 数据台
+   Stripe / Linear 式的精密密集：全无衬线、状态胶囊、细线、克制
+   ============================================================ */
+.dir-c {
+  --bg: #fff; --ink: #111827; --soft: #6b7280; --line: #e5e7eb;
+  --brand: #4f46e5; --ok: #15803d; --warnb: #b45309; --danger: #b91c1c;
+  background: var(--bg); color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  padding: 1.5rem 1.5rem 2.5rem;
+}
+.dir-c h2 { font-size: 1.02rem; margin: 0 0 .15rem; letter-spacing: -.01em; }
+.dir-c .sub { color: var(--soft); font-size: .82rem; margin: 0 0 1rem; }
+.dir-c .num { font-variant-numeric: tabular-nums; }
+.dir-c table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+.dir-c thead th { text-align: left; font-weight: 500; font-size: .76rem; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--soft); border-bottom: 1px solid var(--line);
+  padding: .4rem .6rem; }
+.dir-c tbody tr:nth-child(even) { background: #fafafa; }
+.dir-c td { padding: .42rem .6rem; border-bottom: 1px solid var(--line); }
+.dir-c td.n, .dir-c th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.dir-c tfoot td { border-top: 1px solid var(--ink); font-weight: 600; padding: .45rem .6rem; }
+.dir-c .pill { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem;
+  padding: .08rem .45rem; border-radius: 999px; font-weight: 500; }
+.dir-c .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.dir-c .pill-done { background: #e7f5ec; color: var(--ok); }
+.dir-c .pill-zero { background: #f1f2f4; color: var(--soft); }
+.dir-c .pill-none { background: #fdf1e3; color: var(--warnb); }
+.dir-c .rail { list-style: none; margin: .5rem 0 0; padding: 0; }
+.dir-c .rail li { display: grid; grid-template-columns: 6.5rem 4.5rem 1fr; gap: .5rem;
+  padding: .42rem 0; border-bottom: 1px solid var(--line); font-size: .83rem; }
+.dir-c .when { color: var(--soft); font-size: .78rem; }
+.dir-c fieldset { border: 1px solid var(--line); border-radius: .4rem;
+  padding: .9rem 1rem 1.1rem; margin: 0; }
+.dir-c legend { font-size: .8rem; color: var(--soft); padding: 0 .4rem; }
+.dir-c label { display: block; font-size: .78rem; color: var(--soft); margin: .6rem 0 .15rem; }
+.dir-c input[type=text], .dir-c select { width: 100%; padding: .38rem .5rem; font: inherit;
+  font-size: .86rem; border: 1px solid var(--line); border-radius: .3rem; background: #fff; }
+.dir-c input:focus, .dir-c select:focus { outline: 2px solid var(--brand); outline-offset: -1px; }
+.dir-c button { font: inherit; font-size: .86rem; padding: .38rem 1rem; cursor: pointer;
+  background: var(--brand); color: #fff; border: none; border-radius: .3rem; font-weight: 500; }
+.dir-c .steps { display: flex; align-items: center; gap: .3rem; font-size: .8rem; margin-top: .35rem; }
+.dir-c .steps span { padding: .18rem .6rem; border-radius: 999px; background: #f1f2f4; color: var(--soft); }
+.dir-c .steps span.on { background: var(--brand); color: #fff; }
+.dir-c .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem; }
+@media (max-width: 760px) { .dir-c .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1>综测计分 · 前端重构方向对比</h1>
+  <p>三个方向用<strong>同一批真实数据</strong>渲染同样的界面片段（已脱敏）。选一个，或指出想混搭的部分。</p>
+
+  <div class="picker">
+    <input type="radio" name="dir" id="d-a" checked><label for="d-a">A · 台账</label>
+    <input type="radio" name="dir" id="d-b"><label for="d-b">B · 校务公文</label>
+    <input type="radio" name="dir" id="d-c"><label for="d-c">C · 数据台</label>
+  </div>
+
+  <div class="note" id="note"></div>
+
+  <div class="stage">
+
+  <!-- ===================== A · 台账 ===================== -->
+  <div class="dir dir-a">
+    <div class="ledger-head">
+      <div>
+        <h2 class="serif">2026-2027秋季学期 · 综合测评公示</h2>
+        <p class="sub">公示期 · 全员可查 · 第 6 天 / 共 7 天</p>
+      </div>
+      <span class="seal-badge">✓ 账本校验通过 · 1359 条</span>
+    </div>
+
+    <table>
+      <thead><tr>
+        <th>学号</th><th>姓名</th><th>班级</th>
+        <th class="n">A 项</th><th class="n">B 项</th><th class="n">C 项</th><th class="n">S</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="num">2599000024</td><td>林安宁</td><td>人工智能2501</td>
+            <td class="n num">23.60</td><td class="n num">72.69</td><td class="n num">0</td><td class="n num"><strong>57.96</strong></td></tr>
+        <tr><td class="num">2599000028</td><td>吕思</td><td>人工智能2501</td>
+            <td class="n num">34.70</td><td class="n num">79.75</td><td class="n num">0</td><td class="n num"><strong>66.23</strong></td></tr>
+        <tr><td class="num">2599000029</td><td>袁建国</td><td>人工智能2501</td>
+            <td class="n num">40.60</td><td class="n num">89.24</td><td class="n num">0</td><td class="n num"><strong>74.64</strong></td></tr>
+        <tr><td class="num">2599000030</td><td>肖芳</td><td>人工智能2501</td>
+            <td class="n num">34.20</td><td class="n num">83.27</td><td class="n num">0</td><td class="n num"><strong>68.55</strong></td></tr>
+        <tr><td class="num">2599000031</td><td>李天磊</td><td>人工智能2501</td>
+            <td class="n num">41.10</td><td class="n num">86.53</td><td class="n num">0.25</td><td class="n num"><strong>73.15</strong></td></tr>
+      </tbody>
+      <tfoot><tr>
+        <td colspan="3">全院 146 人 · S = A×0.3 + B×0.7 + C</td>
+        <td class="n num">—</td><td class="n num">—</td><td class="n num">—</td>
+        <td class="n num">均 62.41</td>
+      </tr></tfoot>
+    </table>
+
+    <div class="grid2" style="margin-top:1.8rem">
+      <div>
+        <h2 class="serif">林安宁 · 2599000024 的凭证</h2>
+        <p class="sub">A 项 23.60 + 基线 5.00　·　B 项 72.69　·　C 项 0</p>
+        <ul class="rail">
+          <li><span class="when num">9/29 22:13</span>　<strong>+4</strong>　A2 参与学生工作·班级评定<br>
+              <span class="when">录入 2599000026 · 校学生会办公室</span></li>
+          <li><span class="when num">9/29 22:14</span>　<strong>+9</strong>　A4 寝室检查<br>
+              <span class="when">录入 2599000025 · 生活部　复核 2599000027　批准 2599000023</span></li>
+          <li><span class="when num">9/29 22:15</span>　<strong>+3</strong>　A7 文艺类 · 校园歌手赛三等奖<br>
+              <span class="when">录入 2511410131 · 文艺部</span></li>
+        </ul>
+      </div>
+      <div>
+        <fieldset>
+          <legend>录入 · A7 体育类 · 上限 6 分</legend>
+          <div class="steps"><span class="on">提交</span><em>→</em><span>复核</span><em>→</em><span>批准</span></div>
+          <label for="a-stu">学生</label>
+          <select id="a-stu"><option>2599000032　韩梓萱　人工智能2501</option></select>
+          <label for="a-val">本次加分</label>
+          <input type="text" id="a-val" value="2.5">
+          <div class="meter"><i style="width:42%"></i></div>
+          <p class="sub" style="margin:.3rem 0 0">已有 2.5 / 上限 6 · 本次最多再 +3.5</p>
+          <label for="a-reason">理由（进账本，可被追问）</label>
+          <input type="text" id="a-reason" value="校运动会田径 100 米第一名">
+          <p style="margin:1rem 0 0"><button>录入并记入账本</button></p>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== B · 校务公文 ===================== -->
+  <div class="dir dir-b">
+    <div class="band">计算机学院 · 综合测评公示</div>
+    <div class="sheet">
+      <div class="stamp">计算机学院<br>综测专用章</div>
+      <h2>2026-2027 学年秋季学期综合测评成绩公示</h2>
+      <p class="sub">公示期第 6 天　·　账本校验通过，共 1359 条记录　·　本页数据来自只增不改的账本</p>
+
+      <table>
+        <thead><tr>
+          <th>学号</th><th>姓名</th><th>班级</th>
+          <th class="n">A 项</th><th class="n">B 项</th><th class="n">C 项</th><th class="n">S</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="num">2599000024</td><td>林安宁</td><td>人工智能2501</td>
+              <td class="n num">23.60</td><td class="n num">72.69</td><td class="n num">0</td><td class="n num"><strong>57.96</strong></td></tr>
+          <tr><td class="num">2599000028</td><td>吕思</td><td>人工智能2501</td>
+              <td class="n num">34.70</td><td class="n num">79.75</td><td class="n num">0</td><td class="n num"><strong>66.23</strong></td></tr>
+          <tr><td class="num">2599000029</td><td>袁建国</td><td>人工智能2501</td>
+              <td class="n num">40.60</td><td class="n num">89.24</td><td class="n num">0</td><td class="n num"><strong>74.64</strong></td></tr>
+        </tbody>
+        <tfoot><tr>
+          <td colspan="3">全院 146 人　S = A×0.3 + B×0.7 + C</td>
+          <td class="n num">—</td><td class="n num">—</td><td class="n num">—</td><td class="n num">均 62.41</td>
+        </tr></tfoot>
+      </table>
+
+      <div class="grid2" style="margin-top:1.8rem">
+        <div>
+          <h2 style="font-size:1.05rem;text-align:left;border:0">林安宁　2599000024</h2>
+          <p class="sub" style="text-align:left;border:0;padding:0">A 项 23.60　B 项 72.69　C 项 0　<strong>S 57.96</strong></p>
+          <ul class="rail">
+            <li><span class="when num">9/29 22:13</span>　<strong>+4</strong>　A2 参与学生工作·班级评定<br>
+                <span class="when">录入 2599000026 · 校学生会办公室</span></li>
+            <li><span class="when num">9/29 22:14</span>　<strong>+9</strong>　A4 寝室检查<br>
+                <span class="when">录入 2599000025 · 生活部</span></li>
+          </ul>
+        </div>
+        <div>
+          <fieldset>
+            <legend>录入 · A7 体育类 · 上限 6 分</legend>
+            <div class="steps"><span class="on">提交</span><span>复核</span><span>批准</span></div>
+            <label for="b-stu">学生</label>
+            <select id="b-stu"><option>2599000032　韩梓萱　人工智能2501</option></select>
+            <label for="b-val">本次加分</label>
+            <input type="text" id="b-val" value="2.5">
+            <p class="sub" style="text-align:left;border:0">已有 2.5 / 上限 6 · 本次最多再 +3.5</p>
+            <label for="b-reason">理由</label>
+            <input type="text" id="b-reason" value="校运动会田径 100 米第一名">
+            <p style="margin:1rem 0 0"><button>提交</button></p>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== C · 数据台 ===================== -->
+  <div class="dir dir-c">
+    <h2>综合测评公示</h2>
+    <p class="sub">2026-2027秋季学期 · 公示期 · 账本校验通过 1359 条</p>
+
+    <table>
+      <thead><tr>
+        <th>学号</th><th>姓名</th><th>班级</th>
+        <th class="n">A 项</th><th class="n">B 项</th><th class="n">C 项</th><th class="n">S</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="num">2599000024</td><td>林安宁</td><td>人工智能2501</td>
+            <td class="n num">23.60</td><td class="n num">72.69</td><td class="n num">0</td><td class="n num">57.96</td></tr>
+        <tr><td class="num">2599000028</td><td>吕思</td><td>人工智能2501</td>
+            <td class="n num">34.70</td><td class="n num">79.75</td><td class="n num">0</td><td class="n num">66.23</td></tr>
+        <tr><td class="num">2599000029</td><td>袁建国</td><td>人工智能2501</td>
+            <td class="n num">40.60</td><td class="n num">89.24</td><td class="n num">0</td><td class="n num">74.64</td></tr>
+        <tr><td class="num">2599000030</td><td>肖芳</td><td>人工智能2501</td>
+            <td class="n num">34.20</td><td class="n num">83.27</td><td class="n num">0</td><td class="n num">68.55</td></tr>
+      </tbody>
+      <tfoot><tr>
+        <td colspan="3">146 人</td><td class="n">—</td><td class="n">—</td><td class="n">—</td>
+        <td class="n num">均 62.41</td>
+      </tr></tfoot>
+    </table>
+
+    <div class="grid2" style="margin-top:1.8rem">
+      <div>
+        <h2>林安宁 · 2599000024</h2>
+        <p class="sub">A 23.60 · B 72.69 · C 0 · <strong>S 57.96</strong></p>
+        <ul class="rail">
+          <li><span class="when num">9/29 22:13</span><span><strong>+4</strong></span><span>A2 班级评定 <span class="when">· 2599000026 办公室</span></span></li>
+          <li><span class="when num">9/29 22:14</span><span><strong>+9</strong></span><span>A4 寝室检查 <span class="when">· 2599000025 生活部</span></span></li>
+          <li><span class="when num">9/29 22:15</span><span><strong>+3</strong></span><span>A7 文艺类 <span class="when">· 2511410131 文艺部</span></span></li>
+        </ul>
+      </div>
+      <div>
+        <fieldset>
+          <legend>A7 体育类 · 上限 6 分</legend>
+          <div class="steps"><span class="on">提交</span><span>复核</span><span>批准</span></div>
+          <label for="c-stu">学生</label>
+          <select id="c-stu"><option>2599000032　韩梓萱　人工智能2501</option></select>
+          <label for="c-val">本次加分</label>
+          <input type="text" id="c-val" value="2.5">
+          <p class="sub" style="margin:.3rem 0 0">已有 2.5 / 上限 6 · 最多再 +3.5</p>
+          <label for="c-reason">理由</label>
+          <input type="text" id="c-reason" value="校运动会田径 100 米第一名">
+          <p style="margin:1rem 0 0"><button>录入</button></p>
+        </fieldset>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <p class="note">
+    状态徽章在三个方向里都刻意做成三种形状而不是三种文字：<br>
+    <span style="color:#2c6e4f">实心/描边（已统计）</span> ·
+    <span style="color:#8a5a12">实心填色（未提交 · 该有人做但没人做）</span> ·
+    <span style="color:#6b7280">空心灰（已统计 0 条 · 查过了确实没有）</span><br>
+    这是把「别把两者合并成一句未提交」那段解释变成界面的做法 —— 话可以不写了。
+  </p>
+</div>
+
+<script>
+  const notes = {
+    'd-a': 'A · 台账 —— 中式账册与会计凭证。纸墨色、界格线、印泥红只用于存证与危险动作，合计线上方用中式双线。所有数字走等宽字体并右对齐。签名元素是左侧那条「凭证链」：每一笔加分都是链上的一节，谁录的、谁复核的、谁批的都挂在上面。',
+    'd-b': 'B · 校务公文 —— 红头文件与公示栏。居中版面、红头色带、宋体标题、公章。最接近「这是一份正式公示文件」的直觉，投屏和打印效果最好。风险是容易显得老气，而且离「模板化的报刊版式」比较近。',
+    'd-c': 'C · 数据台 —— Stripe / Linear 式的精密密集。全无衬线、细线、状态胶囊、斑马纹。最「现代」也最安全，但和这个产品真正特别的地方（账本、凭证、公示）关系最弱 —— 换个产品也长得差不多。'
+  };
+  const note = document.getElementById('note');
+  function sync() {
+    const id = document.querySelector('input[name=dir]:checked').id;
+    note.textContent = notes[id];
+  }
+  document.querySelectorAll('input[name=dir]').forEach(r => r.addEventListener('change', sync));
+  sync();
+</script>
+</body>
+</html>

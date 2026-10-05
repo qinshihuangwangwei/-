@@ -1,0 +1,35 @@
+{
+  "name": "zongce-scoring",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "综测计分公示系统 —— 追加式账本 + 哈希链，让加分无法暗箱操作",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/cli/serve.ts",
+    "dev": "node --disable-warning=ExperimentalWarning src/cli/serve.ts",
+    "server": "node --disable-warning=ExperimentalWarning src/cli/serve.ts",
+    "serve": "node --disable-warning=ExperimentalWarning src/cli/serve.ts",
+    "test": "node --test --disable-warning=ExperimentalWarning",
+    "test:watch": "node --test --watch --disable-warning=ExperimentalWarning",
+    "typecheck": "tsc --noEmit",
+    "admin:init": "node --disable-warning=ExperimentalWarning src/cli/admin.ts",
+    "ops": "node --disable-warning=ExperimentalWarning src/cli/ops.ts",
+    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.ts",
+    "tick": "node --disable-warning=ExperimentalWarning src/cli/tick.ts",
+    "tick:watch": "node --disable-warning=ExperimentalWarning src/cli/tick.ts ./data/zongce.sqlite --watch",
+    "admin:passwd": "node --disable-warning=ExperimentalWarning src/cli/passwd.ts",
+    "passwd": "node --disable-warning=ExperimentalWarning src/cli/passwd.ts",
+    "accounts:init": "node --disable-warning=ExperimentalWarning src/cli/initAccounts.ts",
+    "leads:init": "node --disable-warning=ExperimentalWarning src/cli/initLeads.ts",
+    "import:a": "node --disable-warning=ExperimentalWarning src/cli/importA.ts",
+    "members:init": "node --disable-warning=ExperimentalWarning src/cli/initMembers.ts",
+    "anonymize": "node --disable-warning=ExperimentalWarning src/cli/anonymize.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
